@@ -22,7 +22,22 @@ re_podatki_izleta = re.compile(
     r'(?P<vrh>[\s\w\(\)/\\.-]+)'
     #morebitna opomba glede smeri poti
     r'€'
-    r'(?P<via>[,\s\w\(\)/\\.-]+)?</title>',
+    r'(?P<via>[,\s\w\(\)/\\.-]+)?</title>'
+    r'.*'
+    #gorovje
+    r'<a\sclass="moder"\shref="/gorovja">gorovja</a>&nbsp;/&nbsp;<a\sclass="mod'
+    r'er"\shref="/gorovje/[\w_]+/\d+">(?P<gorovje>[\w\s]+)</a>'
+    r'.*'
+    #višina izhodišča
+    r'<tr><td><b>Izhodišče:</b>\s<?a?[\w\s_=/]*>?\s?[\w\s/\(\)-\\.]+\((?P<visina_izhodisca>\d+)'
+    r'\sm\)<?/?a?>?</td></tr>'
+    r'.*'
+    #višina cilja
+    r'<tr><td><b>Cilj:</b>\s<a\sclass="moder"\shref="/gora/[\w_-]+/\d+/\d+">'
+    r'[^\n]+\((?P<visina>\d+)\sm\)</a></td></tr>'
+    r'.*'
+    #čas hoje
+    r'<tr><td><b>Čas&nbsp;hoje:</b>\s(?P<cas_hoje>[\w&;]+)</td></tr>',
     flags=re.DOTALL
     )
 
@@ -46,6 +61,21 @@ def shrani_strani_v_mapo(imenik):
         with open(polna_pot_datoteke, 'w', encoding='utf-8') as datoteka:
             datoteka.write(posamezna_pot.text[:30000])
 
+def izlusci_cas_hoje(niz):
+    ura = True
+    ure = 0
+    minute = 0
+    for znak in niz:
+        try:
+            if ura:
+                ure = ure * 10 + int(znak)
+            else:
+                minute = minute * 10 + int(znak)
+        except:
+            if znak == 'h':
+                ura = False
+    return ure * 60 + minute
+
 def preberi_podatke_izletov(imenik):
     izleti = []
     for datoteka in os.listdir(imenik):
@@ -55,11 +85,13 @@ def preberi_podatke_izletov(imenik):
             uspeh = re_podatki_izleta.search(niz)
             if uspeh:
                 podatki = uspeh.groupdict()
+                
+                podatki['cas_hoje'] = izlusci_cas_hoje(podatki['cas_hoje'])
+                
                 izleti.append(podatki)
             else:
-                print(niz[:200])
-    print(izleti)
-            
+                print(polna_pot_datoteke)
+                break
             
 
 # shrani_html_seznam(
