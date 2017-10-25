@@ -7,37 +7,50 @@ def shrani_html_seznam(url):
     with open('html_seznam.txt', 'w', encoding='utf-8') as izhod:
         izhod.write(stran.text)
 
-re_id_izleta = re.compile(
+id_izleta = re.compile(
     r'<tr bgcolor="#[ef5]{6}"><td><a href=\Wpot.asp.gorovje'
     r'id=(?P<id1>\d+)&id=(?P<id2>\d+)&potid=(?P<id3>\d+)\W>',flags=re.DOTALL
     )
 
-re_podatki_izleta = re.compile(
+podatki_izleta = re.compile(
     r'<meta\shttp-equiv="content-type"\scontent="text/html;\scharset=UTF-8" />'
     r'.*'
     #izhodišče
-    r'<title>\s*(?P<izhodisce>[\s\w\(\)/\\.-]+)'
+    r'<title>\s*(?P<Izhodišče>[\s\w\(\)/\\.-]+)'
     r'€'
-    #vrh
-    r'(?P<vrh>[\s\w\(\)/\\.-]+)'
+    #cilj
+    r'(?P<Cilj>[\s\w\(\)/\\.-]+)'
     #morebitna opomba glede smeri poti
     r'€'
-    r'(?P<via>[,\s\w\(\)/\\.-]+)?</title>'
+    r'(?P<Opomba_poti>[,\s\w\(\)/\\.-]+)?</title>'
     r'.*'
     #gorovje
     r'<a\sclass="moder"\shref="/gorovja">gorovja</a>&nbsp;/&nbsp;<a\sclass="mod'
-    r'er"\shref="/gorovje/[\w_]+/\d+">(?P<gorovje>[\w\s]+)</a>'
+    r'er"\shref="/gorovje/[\w_]+/\d+">(?P<Gorovje>[\w\s]+)</a>'
     r'.*'
     #višina izhodišča
-    r'<tr><td><b>Izhodišče:</b>\s<?a?[\w\s_=/]*>?\s?[\w\s/\(\)-\\.]+\((?P<visina_izhodisca>\d+)'
+    r'<tr><td><b>Izhodišče:</b>\s<?a?[\w\s_=/]*>?\s?[\w\s/\(\)-\\.]+\((?P<Višina_izhodišča>\d+)'
     r'\sm\)<?/?a?>?</td></tr>'
     r'.*'
     #višina cilja
     r'<tr><td><b>Cilj:</b>\s<a\sclass="moder"\shref="/gora/[\w_-]+/\d+/\d+">'
-    r'[^\n]+\((?P<visina>\d+)\sm\)</a></td></tr>'
+    r'[^\n]+\((?P<Višina_cilja>\d+)\sm\)</a></td></tr>'
     r'.*'
     #čas hoje
-    r'<tr><td><b>Čas&nbsp;hoje:</b>\s(?P<cas_hoje>[\w&;]+)</td></tr>',
+    r'<tr><td><b>Čas&nbsp;hoje:</b>\s(?P<Čas_hoje>[\w&;]+)</td></tr>'
+    r'.*'
+    #zahtevnost
+    r'<tr><td><b>Zahtevnost:</b>\s(?P<Zahtevnost>[\w\s,]+)</td></tr>'
+    r'.*'
+    #višinska razlika po poti
+    r'<tr><td><b>Višinska\srazlika\spo\spoti:</b>\s'
+    r'(?P<Višinska_razlika_po_poti>\d+)\sm</td></tr>'
+    r'.*'
+    #ocena
+    r'var\socena=(?P<Ocena>\d\d?)'
+    r'.*'
+    #število glasov
+    r'(<img\ssrc="/slike/zvezdaBela2.png"\sid="s\d\d?">)+\s(?P<Število_glasov>\d*)&nbsp;glasov',
     flags=re.DOTALL
     )
 
@@ -45,7 +58,7 @@ def naredi_seznam_idjev(datoteka):
     with open(datoteka) as dat:
         html = dat.read()
         seznam = []
-        for pot in re_id_izleta.finditer(html):
+        for pot in id_izleta.finditer(html):
             seznam.append((pot.group(1), pot.group(2), pot.group(3)))
     return seznam
 
@@ -74,7 +87,7 @@ def izlusci_cas_hoje(niz):
         except:
             if znak == 'h':
                 ura = False
-    return ure * 60 + minute
+    return str(ure * 60 + minute)
 
 def preberi_podatke_izletov(imenik):
     izleti = []
@@ -82,17 +95,17 @@ def preberi_podatke_izletov(imenik):
         polna_pot_datoteke = os.path.join(imenik, datoteka)
         with open(polna_pot_datoteke, encoding='utf-8') as vhod:
             niz = vhod.read().replace(' - ', '€',2)
-            uspeh = re_podatki_izleta.search(niz)
+            uspeh = podatki_izleta.search(niz)
             if uspeh:
                 podatki = uspeh.groupdict()
                 
-                podatki['cas_hoje'] = izlusci_cas_hoje(podatki['cas_hoje'])
+                podatki['Čas_hoje'] = izlusci_cas_hoje(podatki['Čas_hoje'])
                 
                 izleti.append(podatki)
             else:
                 print(polna_pot_datoteke)
                 break
-            
+    return izleti
 
 # shrani_html_seznam(
 #    'http://www.hribi.net/goreiskanjerezultat.asp?drzavaid=1&gorovjeid=&'
@@ -103,4 +116,24 @@ def preberi_podatke_izletov(imenik):
 #    '&mojaDolzina=0'
 #    )
 
-preberi_podatke_izletov('izleti')
+izleti = preberi_podatke_izletov('izleti')
+
+import csv
+with open('izleti.csv', 'w') as datoteka:
+    polja = [
+        'Izhodišče',
+        'Cilj',
+        'Opomba_poti',
+        'Gorovje',
+        'Višina_izhodišča',
+        'Višina_cilja',
+        'Čas_hoje',
+        'Zahtevnost',
+        'Višinska_razlika_po_poti',
+        'Ocena',
+        'Število_glasov'
+    ]
+    pisalec = csv.DictWriter(datoteka, polja, extrasaction='ignore')
+    pisalec.writeheader()
+    for izlet in izleti:
+        pisalec.writerow(izlet)
