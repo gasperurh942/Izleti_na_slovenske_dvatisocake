@@ -176,7 +176,7 @@ for izlet in izleti:
             izlet['vrsta_cilja'] = g['vrsta_cilja']
 
 import csv
-with open('izleti.csv', 'w') as datoteka:
+with open('izleti.csv', 'w', newline='') as datoteka:
     polja = [
         'gorovje',
         'izhodišče',

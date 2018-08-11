@@ -45,3 +45,14 @@ def pretvori_oznacenost(st):
         return 'neoznačena pot'
     if st == 3:
         return 'brezpotje'
+
+def str_to_float(niz):
+    if isinstance(niz, float):
+        return niz
+    else:
+        sez = niz.split(',')
+        if len(sez) >= 2:
+            dec = len(sez[1])
+            return int(sez[0].strip()) + int(sez[1].strip()) / (10 ** dec)
+        else:
+            return int(sez[0].strip())
